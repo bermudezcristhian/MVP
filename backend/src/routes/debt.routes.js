@@ -1,12 +1,25 @@
 const express = require("express");
 const router = express.Router();
-const debtController = require("../controllers/debt.controller");
 
-router.post("/", debtController.create);
-router.get("/user/:userId", debtController.listByUser);
-router.get("/user/:userId/summary", debtController.summary);
-router.get("/user/:userId/export/csv", debtController.exportCSV);
-router.patch("/:id/pay", debtController.pay);
-router.delete("/:id", debtController.remove);
+const debtController = require("../controllers/debt.controller");
+const auth = require("../middlewares/auth.middleware");
+
+// Crear deuda
+router.post("/", auth, debtController.create);
+
+// Listar deudas por usuario
+router.get("/", auth, debtController.listByUser);
+
+// Marcar deuda como pagada
+router.put("/:id/pay", auth, debtController.pay);
+
+// Eliminar deuda
+router.delete("/:id", auth, debtController.remove);
+
+// Resumen de deudas
+router.get("/summary", auth, debtController.summary);
+
+// Exportar CSV
+router.get("/export", auth, debtController.exportCSV);
 
 module.exports = router;

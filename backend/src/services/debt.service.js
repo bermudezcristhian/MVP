@@ -1,8 +1,9 @@
 const prisma = require("../config/prisma");
+const redis = require("../config/redis");
 
 /**
  * Crear deuda
- * No permite valores negativos ni cero
+ * ❌ No permite valores negativos ni cero
  */
 exports.createDebt = async (data) => {
   const { userId, amount, description } = data;
@@ -11,7 +12,7 @@ exports.createDebt = async (data) => {
     throw new Error("No se pueden registrar deudas con valores negativos o cero");
   }
 
-  return prisma.debt.create({
+  const debt = await prisma.debt.create({
     data: {
       userId,
       amount,
@@ -19,16 +20,33 @@ exports.createDebt = async (data) => {
       paid: false,
     },
   });
+
+  // Invalida cache
+  await redis.del(`debts:user:${userId}`);
+  await redis.del(`summary:user:${userId}`);
+
+  return debt;
 };
 
 /**
- * Listar deudas por usuario
+ * Listar deudas por usuario (con cache)
  */
 exports.getDebtsByUser = async (userId) => {
-  return prisma.debt.findMany({
+  const cacheKey = `debts:user:${userId}`;
+
+  const cached = await redis.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const debts = await prisma.debt.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
   });
+
+  await redis.setEx(cacheKey, 60, debts); // TTL 60s
+
+  return debts;
 };
 
 /**
@@ -36,9 +54,7 @@ exports.getDebtsByUser = async (userId) => {
  * ❌ Una deuda pagada no puede modificarse
  */
 exports.payDebt = async (id) => {
-  const debt = await prisma.debt.findUnique({
-    where: { id },
-  });
+  const debt = await prisma.debt.findUnique({ where: { id } });
 
   if (!debt) {
     throw new Error("La deuda no existe");
@@ -48,10 +64,16 @@ exports.payDebt = async (id) => {
     throw new Error("La deuda ya está pagada y no puede modificarse");
   }
 
-  return prisma.debt.update({
+  const updated = await prisma.debt.update({
     where: { id },
     data: { paid: true },
   });
+
+  // Invalida cache
+  await redis.del(`debts:user:${debt.userId}`);
+  await redis.del(`summary:user:${debt.userId}`);
+
+  return updated;
 };
 
 /**
@@ -59,9 +81,7 @@ exports.payDebt = async (id) => {
  * ❌ No permite eliminar deudas pagadas
  */
 exports.deleteDebt = async (id) => {
-  const debt = await prisma.debt.findUnique({
-    where: { id },
-  });
+  const debt = await prisma.debt.findUnique({ where: { id } });
 
   if (!debt) {
     throw new Error("La deuda no existe");
@@ -71,34 +91,25 @@ exports.deleteDebt = async (id) => {
     throw new Error("La deuda ya está pagada y no puede modificarse");
   }
 
-  return prisma.debt.delete({
-    where: { id },
-  });
+  await redis.del(`debts:user:${debt.userId}`);
+  await redis.del(`summary:user:${debt.userId}`);
+
+  return prisma.debt.delete({ where: { id } });
 };
 
 /**
- * (Extra) Obtener resumen por usuario
+ * (Extra) Resumen por usuario (con cache)
  */
 exports.getSummaryByUser = async (userId) => {
-  const totalPagado = await prisma.debt.aggregate({
-    where: { userId, paid: true },
-    _sum: { amount: true },
-  });
+  const cacheKey = `summary:user:${userId}`;
 
-  const saldoPendiente = await prisma.debt.aggregate({
-    where: { userId, paid: false },
-    _sum: { amount: true },
-  });
+  const cached = await redis.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
 
-  return {
-    totalPagado: totalPagado._sum.amount || 0,
-    saldoPendiente: saldoPendiente._sum.amount || 0,
-  };
-};
-
-exports.getSummaryByUser = async (userId) => {
   const debts = await prisma.debt.findMany({
-    where: { userId }
+    where: { userId },
   });
 
   const totalPaid = debts
@@ -109,18 +120,23 @@ exports.getSummaryByUser = async (userId) => {
     .filter(d => !d.paid)
     .reduce((sum, d) => sum + d.amount, 0);
 
-  return {
+  const summary = {
     totalPaid,
     totalPending,
-    balance: totalPending
+    balance: totalPending,
   };
+
+  await redis.setEx(cacheKey, 60, summary);
+
+  return summary;
 };
 
+/**
+ * (Extra) Exportar deudas
+ */
 exports.getDebtsForExport = async (userId) => {
   return prisma.debt.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
   });
 };
-
-

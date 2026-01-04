@@ -14,4 +14,15 @@ model Debt {
   description String
   paid        Boolean  @default(false)
   createdAt   DateTime @default(now())
+
+   user User @relation(fields: [userId], references: [id])
 }
+
+model User {
+  id        Int     @id @default(autoincrement())
+  email     String  @unique
+  password  String
+  debts     Debt[]
+  createdAt DateTime @default(now())
+}
+

@@ -2,7 +2,11 @@ const debtService = require("../services/debt.service");
 
 exports.create = async (req, res) => {
   try {
-    const debt = await debtService.createDebt(req.body);
+    const userId = req.user.userId; // 🔐 DEL TOKEN
+    const debt = await debtService.createDebt({
+      ...req.body,
+      userId,
+    });
     res.status(201).json(debt);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -11,7 +15,7 @@ exports.create = async (req, res) => {
 
 exports.listByUser = async (req, res) => {
   try {
-    const userId = Number(req.params.userId);
+    const userId = req.user.id;
     const debts = await debtService.getDebtsByUser(userId);
     res.json(debts);
   } catch (error) {
@@ -41,7 +45,7 @@ exports.remove = async (req, res) => {
 
 exports.summary = async (req, res) => {
   try {
-    const userId = Number(req.params.userId);
+    const userId = req.user.id;
     const summary = await debtService.getSummaryByUser(userId);
     res.json(summary);
   } catch (error) {
@@ -53,7 +57,7 @@ const { createObjectCsvStringifier } = require("csv-writer");
 
 exports.exportCSV = async (req, res) => {
   try {
-    const userId = Number(req.params.userId);
+    const userId = req.user.id;
     const debts = await debtService.getDebtsForExport(userId);
 
     if (!debts.length) {
