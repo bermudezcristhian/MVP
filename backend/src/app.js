@@ -1,24 +1,24 @@
 const express = require("express");
 const cors = require("cors");
 
-const authRoutes = require("./routes/auth.routes");
-const debtRoutes = require("./routes/debt.routes"); // 👈 IMPORTANTE
-
 const app = express();
 
-// Middlewares globales
+// Middlewares
 app.use(cors());
 app.use(express.json());
 
 // Rutas
-app.use("/api/auth", authRoutes);
-app.use("/api/debts", debtRoutes); // 👈 AQUÍ ESTABA EL ERROR
+const authRoutes = require("./routes/auth.routes");
+const debtRoutes = require("./routes/debt.routes");
 
-// Ruta base de prueba
+app.use("/api/auth", authRoutes);
+app.use("/api/debts", debtRoutes);
+
+// 🔴 ESTA RUTA ES CLAVE
 app.get("/api/health", (req, res) => {
   res.json({
     status: "OK",
-    message: "API funcionando correctamente 🚀",
+    message: "API funcionando correctamente",
   });
 });
 
