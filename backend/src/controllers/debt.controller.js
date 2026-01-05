@@ -15,7 +15,7 @@ exports.create = async (req, res) => {
 
 exports.listByUser = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const debts = await debtService.getDebtsByUser(userId);
     res.json(debts);
   } catch (error) {
@@ -45,7 +45,7 @@ exports.remove = async (req, res) => {
 
 exports.summary = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const summary = await debtService.getSummaryByUser(userId);
     res.json(summary);
   } catch (error) {
@@ -57,7 +57,7 @@ const { createObjectCsvStringifier } = require("csv-writer");
 
 exports.exportCSV = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const debts = await debtService.getDebtsForExport(userId);
 
     if (!debts.length) {
