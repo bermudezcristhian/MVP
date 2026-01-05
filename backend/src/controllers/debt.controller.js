@@ -89,4 +89,22 @@ exports.exportCSV = async (req, res) => {
   }
 };
 
+exports.updateDebt = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const { amount, description } = req.body;
+
+    if (!amount || !description) {
+      return res.status(400).json({ message: "Monto y descripción son obligatorios" });
+    }
+
+    const debt = await debtService.updateDebt(id, { amount, description });
+
+    res.json({ message: "Deuda actualizada correctamente", debt });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+
 

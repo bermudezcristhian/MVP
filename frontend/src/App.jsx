@@ -1,10 +1,13 @@
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import { useAuth } from "./auth/useAuth";
+import { useState } from "react";
+import Auth from "./pages/Auth";
+import Debts from "./pages/Debts";
 
-function App() {
-  const { user } = useAuth();
-  return user ? <Dashboard /> : <Login />;
+export default function App() {
+  const [isAuth, setIsAuth] = useState(!!localStorage.getItem("token"));
+
+  return isAuth ? (
+    <Debts onLogout={() => setIsAuth(false)} />
+  ) : (
+    <Auth onAuth={() => setIsAuth(true)} />
+  );
 }
-
-export default App;

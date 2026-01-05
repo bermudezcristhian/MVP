@@ -98,6 +98,36 @@ exports.deleteDebt = async (id) => {
 };
 
 /**
+ * Editar deuda
+ * ❌ No permite editar deudas pagadas
+ */
+exports.updateDebt = async (id, data) => {
+  const debt = await prisma.debt.findUnique({ where: { id } });
+
+  if (!debt) {
+    throw new Error("La deuda no existe");
+  }
+
+  if (debt.paid) {
+    throw new Error("La deuda ya está pagada y no puede modificarse");
+  }
+
+  const updated = await prisma.debt.update({
+    where: { id },
+    data: {
+      amount: data.amount,
+      description: data.description,
+    },
+  });
+
+  // Invalida cache
+  await redis.del(`debts:user:${debt.userId}`);
+  await redis.del(`summary:user:${debt.userId}`);
+
+  return updated;
+};
+
+/**
  * (Extra) Resumen por usuario (con cache)
  */
 exports.getSummaryByUser = async (userId) => {
